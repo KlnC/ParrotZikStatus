@@ -18,6 +18,8 @@
 		05A94D6C19737F65000FD8E9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05A94D4B19737F65000FD8E9 /* Cocoa.framework */; };
 		05A94D7419737F65000FD8E9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 05A94D7219737F65000FD8E9 /* InfoPlist.strings */; };
 		05A94D7619737F65000FD8E9 /* ParrotZikStatusTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 05A94D7519737F65000FD8E9 /* ParrotZikStatusTests.m */; };
+		05A94D8119737FDD000FD8E9 /* ParrotZik.m in Sources */ = {isa = PBXBuildFile; fileRef = 05A94D8019737FDD000FD8E9 /* ParrotZik.m */; };
+		05F3C5021974BBD300F53D7F /* IOBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05F3C5011974BBD300F53D7F /* IOBluetooth.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +52,9 @@
 		05A94D7119737F65000FD8E9 /* ParrotZikStatusTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ParrotZikStatusTests-Info.plist"; sourceTree = "<group>"; };
 		05A94D7319737F65000FD8E9 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		05A94D7519737F65000FD8E9 /* ParrotZikStatusTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ParrotZikStatusTests.m; sourceTree = "<group>"; };
+		05A94D7F19737FDD000FD8E9 /* ParrotZik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParrotZik.h; sourceTree = "<group>"; };
+		05A94D8019737FDD000FD8E9 /* ParrotZik.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ParrotZik.m; sourceTree = "<group>"; };
+		05F3C5011974BBD300F53D7F /* IOBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOBluetooth.framework; path = System/Library/Frameworks/IOBluetooth.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +62,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				05F3C5021974BBD300F53D7F /* IOBluetooth.framework in Frameworks */,
 				05A94D4C19737F65000FD8E9 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -95,6 +101,7 @@
 		05A94D4A19737F65000FD8E9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				05F3C5011974BBD300F53D7F /* IOBluetooth.framework */,
 				05A94D4B19737F65000FD8E9 /* Cocoa.framework */,
 				05A94D6A19737F65000FD8E9 /* XCTest.framework */,
 				05A94D4D19737F65000FD8E9 /* Other Frameworks */,
@@ -118,6 +125,8 @@
 				05A94D5D19737F65000FD8E9 /* AppDelegate.h */,
 				05A94D5E19737F65000FD8E9 /* AppDelegate.m */,
 				05A94D6019737F65000FD8E9 /* MainMenu.xib */,
+				05A94D7F19737FDD000FD8E9 /* ParrotZik.h */,
+				05A94D8019737FDD000FD8E9 /* ParrotZik.m */,
 				05A94D6319737F65000FD8E9 /* Images.xcassets */,
 				05A94D5219737F65000FD8E9 /* Supporting Files */,
 			);
@@ -252,6 +261,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				05A94D8119737FDD000FD8E9 /* ParrotZik.m in Sources */,
 				05A94D5F19737F65000FD8E9 /* AppDelegate.m in Sources */,
 				05A94D5819737F65000FD8E9 /* main.m in Sources */,
 			);
@@ -466,6 +476,7 @@
 				05A94D7B19737F65000FD8E9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		05A94D7C19737F65000FD8E9 /* Build configuration list for PBXNativeTarget "ParrotZikStatusTests" */ = {
 			isa = XCConfigurationList;
@@ -474,6 +485,7 @@
 				05A94D7E19737F65000FD8E9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
