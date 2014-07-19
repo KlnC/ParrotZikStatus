@@ -9,12 +9,15 @@
 #import "AppDelegate.h"
 #import "ParrotZik.h"
 
-@interface AppDelegate () 
+@interface AppDelegate () <ParrotZikDelegate>
 
 @property (nonatomic, retain) NSString *macAddress;
 
 @property (nonatomic, retain) NSStatusItem *statusItem;
 @property (nonatomic, retain) NSMenu *menu;
+@property (nonatomic, retain) NSMenu *equalizerPresetMenu;
+@property (nonatomic, retain) NSMenu *concertHallRoomSizeMenu;
+@property (nonatomic, retain) NSMenu *concertHallAngleMenu;
 
 @property (nonatomic, retain) NSMenuItem *friendlyNameMenuItem;
 @property (nonatomic, retain) NSMenuItem *firmwareVersionMenuItem;
@@ -22,6 +25,9 @@
 @property (nonatomic, retain) NSMenuItem *batteryLevelMenuItem;
 
 @property (nonatomic, retain) NSMenuItem *noiseCancelingMenuItem;
+@property (nonatomic, retain) NSMenuItem *equalizerMenuItem;
+@property (nonatomic, retain) NSMenuItem *concertHallMenuItem;
+@property (nonatomic, retain) NSMenuItem *louReedMenuItem;
 
 @property (nonatomic, retain) NSTimer *updateTimer;
 
@@ -37,27 +43,38 @@
     self.macAddress = @"90:03:B7:AE:7A:4C";
 }
 
+- (void)zikReady {
+    [self initializeMenuItems];
+}
+
+- (void)zikDataChanged {
+    [self refreshMenuData];
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
 {
     [self setDefaultProperties];
     
     // New Parrot Zik object
     self.zik = [[ParrotZik alloc] initWithMacAddress:self.macAddress];
+    self.zik.delegate = self;
     
     [self initializeStatusBar];
     
     // TODO now using timer, however this could be done with delegate methods from Zik object when stuff changes
-    self.updateTimer = [NSTimer
-                    scheduledTimerWithTimeInterval:(15.0)
-                    target:self
-                    selector:@selector(refreshMenuData)
-                    userInfo:nil
-                    repeats:YES];
-    
-    [self.updateTimer fire];
+//    self.updateTimer = [NSTimer
+//                    scheduledTimerWithTimeInterval:(15.0)
+//                    target:self
+//                    selector:@selector(refreshMenuData)
+//                    userInfo:nil
+//                    repeats:YES];
+//    
+//    [self.updateTimer fire];
 }
 
 - (void)initializeStatusBar {
+    
+    // Initialize a status item (menu header)
     self.statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
     [self.statusItem setHighlightMode:YES];
     [self.statusItem setTitle:@"Zik"];
@@ -68,7 +85,7 @@
     
     [self.statusItem setMenu:self.menu];
     
-    // TODO make these not all say connecting
+    // Initialize a connecting item
     self.friendlyNameMenuItem = [[NSMenuItem alloc] initWithTitle:@"Connecting..." action:nil keyEquivalent:@""];
     [self.friendlyNameMenuItem setTarget:self];
     [self.menu insertItem:self.friendlyNameMenuItem atIndex:0];
@@ -89,10 +106,6 @@
     return [NSString stringWithFormat:@"Battery %@%% (%@)", self.zik.batteryLevel, self.zik.batteryStatus];
 }
 
-- (NSString*)formatNoiseCanceling {
-    return (self.zik.noiseCancelingEnabled.boolValue ? @"Turn Noise Canceling Off" : @"Turn Noise Canceling On");
-}
-
 
 #pragma Triggered events
 
@@ -101,39 +114,84 @@
     // If we have a connection
     if (self.zik.friendlyName != nil) {
         
-        // Initialize menu items if not already initialized
-        if (nil == self.firmwareVersionMenuItem && nil != self.zik.firmwareVersion) {
-            self.firmwareVersionMenuItem = [[NSMenuItem alloc] initWithTitle:[self formatFirmware] action:nil keyEquivalent:@""];
-            [self.firmwareVersionMenuItem setTarget:self];
-            [self.menu insertItem:self.firmwareVersionMenuItem atIndex:1];
-        }
-        if (nil == self.batteryStatusMenuItem && nil != self.zik.batteryStatus) {
-            self.batteryStatusMenuItem = [[NSMenuItem alloc] initWithTitle:[self formatBattery] action:nil keyEquivalent:@""];
-            [self.batteryStatusMenuItem setTarget:self];
-            [self.menu insertItem:self.batteryStatusMenuItem atIndex:2];
-        }
-        if (nil == self.noiseCancelingMenuItem && nil != self.zik.noiseCancelingEnabled) {
-            self.noiseCancelingMenuItem = [[NSMenuItem alloc] initWithTitle:[self formatNoiseCanceling] action:@selector(toggleNoiseCancelling) keyEquivalent:@""];
-            [self.noiseCancelingMenuItem setTarget:self];
-            [self.menu insertItem:self.noiseCancelingMenuItem atIndex:3];
-        }
-        
         // Update everything
         self.friendlyNameMenuItem.title = [self formatFriendlyName];
         self.firmwareVersionMenuItem.title = [self formatFirmware];
         self.batteryStatusMenuItem.title = [self formatBattery];
-        self.noiseCancelingMenuItem.title = [self formatNoiseCanceling];
+        self.noiseCancelingMenuItem.state = self.zik.noiseCancelingEnabled.boolValue ? NSOnState : NSOffState;
+        self.equalizerMenuItem.state = self.zik.equalizerEnabled.boolValue ? NSOnState : NSOffState;
+        self.concertHallMenuItem.state = self.zik.concertHallEnabled.boolValue ? NSOnState : NSOffState;
+        self.louReedMenuItem.state = self.zik.louReedEnabled.boolValue ? NSOnState : NSOffState;
+        
+        if (self.zik.louReedEnabled.boolValue) {
+            [self.equalizerMenuItem setAction:nil];
+            [self.concertHallMenuItem setAction:nil];
+        } else {
+            [self.equalizerMenuItem setAction:@selector(toggleEqualizer)];
+            [self.concertHallMenuItem setAction:@selector(toggleConcertHall)];
+        }
     }
 }
 
 - (void)toggleNoiseCancelling {
-    if (self.zik.noiseCancelingEnabled.boolValue == YES) {
-        self.zik.noiseCancelingEnabled = @NO;
-        self.noiseCancelingMenuItem.title = [self formatNoiseCanceling];
-    } else {
-        self.zik.noiseCancelingEnabled = @YES;
-        self.noiseCancelingMenuItem.title = [self formatNoiseCanceling];
-    }
+    self.zik.noiseCancelingEnabled = self.zik.noiseCancelingEnabled.boolValue ? @NO : @YES;
+    [self refreshMenuData];
+}
+- (void)toggleEqualizer {
+    self.zik.equalizerEnabled = self.zik.equalizerEnabled.boolValue ? @NO : @YES;
+    [self refreshMenuData];
+}
+- (void)toggleConcertHall {
+    self.zik.concertHallEnabled = self.zik.concertHallEnabled.boolValue ? @NO : @YES;
+    [self refreshMenuData];
+}
+- (void)toggleLouReed {
+    self.zik.louReedEnabled = self.zik.louReedEnabled.boolValue ? @NO : @YES;
+    [self refreshMenuData];
+}
+
+- (void)initializeMenuItems
+{
+    // Initialize menu items if not already initialized
+    self.firmwareVersionMenuItem = [[NSMenuItem alloc] initWithTitle:[self formatFirmware] action:nil keyEquivalent:@""];
+    [self.firmwareVersionMenuItem setTarget:self];
+    [self.menu insertItem:self.firmwareVersionMenuItem atIndex:1];
+
+    self.batteryStatusMenuItem = [[NSMenuItem alloc] initWithTitle:[self formatBattery] action:nil keyEquivalent:@""];
+    [self.batteryStatusMenuItem setTarget:self];
+    [self.menu insertItem:self.batteryStatusMenuItem atIndex:2];
+
+    self.noiseCancelingMenuItem = [[NSMenuItem alloc] initWithTitle:@"Noise Canceling" action:@selector(toggle:) keyEquivalent:@""];
+    [self.noiseCancelingMenuItem setRepresentedObject:self.zik.noiseCancelingEnabled];
+    [self.noiseCancelingMenuItem setTarget:self];
+    [self.menu insertItem:self.noiseCancelingMenuItem atIndex:3];
+
+    self.equalizerMenuItem = [[NSMenuItem alloc] initWithTitle:@"Equalizer" action:@selector(toggleEqualizer) keyEquivalent:@""];
+    [self.equalizerMenuItem setTarget:self];
+    [self.menu insertItem:self.equalizerMenuItem atIndex:4];
+
+    self.concertHallMenuItem = [[NSMenuItem alloc] initWithTitle:@"Concert Hall" action:@selector(toggleConcertHall) keyEquivalent:@""];
+    [self.concertHallMenuItem setTarget:self];
+    [self.menu insertItem:self.concertHallMenuItem atIndex:5];
+
+    self.louReedMenuItem = [[NSMenuItem alloc] initWithTitle:@"Lou Reed" action:@selector(toggleLouReed) keyEquivalent:@""];
+    [self.louReedMenuItem setTarget:self];
+    [self.menu insertItem:self.louReedMenuItem atIndex:6];
+    
+//    self.equalizerPresetMenuItem = [[NSMenuItem alloc] initWithTitle:@"Equalizer Preset" action:nil keyEquivalent:@""];
+//    [self.equalizerPresetMenuItem setTarget:self];
+//    [self.menu insertItem:self.equalizerPresetMenuItem atIndex:7];
+//    [self.equalizerPresetMenuItem setMenu:self.equalizerPresetMenu];
+//    
+//    self.concertHallMenuItem = [[NSMenuItem alloc] initWithTitle:@"Concert Hall Room Size" action:nil keyEquivalent:@""];
+//    [self.concertHallMenuItem setTarget:self];
+//    [self.menu insertItem:self.concertHallMenuItem atIndex:8];
+//    
+//    self.louReedMenuItem = [[NSMenuItem alloc] initWithTitle:@"Concert Hall Angle" action:nil keyEquivalent:@""];
+//    [self.louReedMenuItem setTarget:self];
+//    [self.menu insertItem:self.louReedMenuItem atIndex:9];
+    
+    [self refreshMenuData];
 }
 
 @end

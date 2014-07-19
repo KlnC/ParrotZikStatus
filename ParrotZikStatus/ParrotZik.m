@@ -13,11 +13,12 @@
 // Bluetooth connection properties
 @property (nonatomic, retain) IOBluetoothDevice *btDevice;
 @property (nonatomic, retain) IOBluetoothRFCOMMChannel *rfcommChannel;
-@property (nonatomic) BOOL connectionOpened;
+@property (nonatomic, retain) NSNumber *connectionOpened; // Boolean
 
 @property (nonatomic, retain) NSDictionary *argsDictionary;
 @property (nonatomic, retain) NSDictionary *reverseArgsDictionary;
 @property (nonatomic, retain) NSDictionary *batteryStatusDictionary;
+@property (nonatomic, retain) NSArray *concertHallRoomSizesZik;
 
 @end
 
@@ -40,68 +41,56 @@
 }
 
 - (void)initializeDefaultProperties {
-    self.argsDictionary = @{[NSNumber numberWithBool:true]: @"true", [NSNumber numberWithBool:false]: @"false"};
-    self.reverseArgsDictionary = @{@"true": [NSNumber numberWithBool:true], @"false": [NSNumber numberWithBool:false]};
-    self.batteryStatusDictionary = @{@"in_use": @"in use", @"charging": @"charging"};
+    
+    // For translating between Zik strings and internal data
+    self.argsDictionary = @{@YES: @"true", @NO: @"false"};
+    self.reverseArgsDictionary = @{@"true": @YES, @"invalid_on": @YES, @"false": @NO, @"invalid_off": @NO};
+    self.batteryStatusDictionary = @{@"in_use": @"In Use", @"charging": @"Charging"};
+    
+    // List options presented externally
+    self.concertHallRoomSizes = @[@"Silent Room", @"Living Room", @"Jazz Club", @"Concert Hall"];
+    self.concertHallAngles = @[@0, @30, @60, @90, @120, @150, @180];
+    self.equalizerPresets = @[@"Vocal", @"Pop", @"Club", @"Punchy", @"Deep", @"Crystal", @"User"];
+    
+    // Zik formatted list options
+    self.concertHallRoomSizesZik = @[@"silent", @"living", @"jazz", @"concert"];
 }
 
 #pragma Getter and Setter methods
 
-- (NSString*)getFriendlyName {
-    
-    return _friendlyName;
-}
-
-- (NSString*)getFirmwareVersion {
-    
-    return _firmwareVersion;
-}
-
-- (NSNumber*)getNoiseCancelingEnabled {
-    
-    return _noiseCancelingEnabled;
-}
 - (void)setNoiseCancelingEnabled:(NSNumber*)isEnabled {
-    
-    // Create set command
     [self setRequest:@"/api/audio/noise_cancellation/enabled/set" withArgs:self.argsDictionary[isEnabled]];
-    
-    // TODO in the future we should only change this once Zik device has verified it's been done
     _noiseCancelingEnabled = isEnabled;
 }
 
-- (NSNumber*)getLouReedEnabled {
-    
-    return _louReedEnabled;
-}
 - (void)setLouReedEnabled:(NSNumber*)isEnabled {
-#warning TODO
+    [self setRequest:@"/api/audio/specific_mode/enabled/set" withArgs:self.argsDictionary[isEnabled]];
+    _louReedEnabled = isEnabled;
 }
 
-- (NSNumber*)getConcertHallEnabled {
-    
-    return _concertHallEnabled;
-}
 - (void)setConcertHallEnabled:(NSNumber*)isEnabled {
-#warning TODO
+    [self setRequest:@"/api/audio/sound_effect/enabled/set" withArgs:self.argsDictionary[isEnabled]];
+    _concertHallEnabled = isEnabled;
 }
 
-- (NSNumber*)getEqualizerEnabled {
-    
-    return _equalizerEnabled;
+- (void)setConcertHallCurrentRoomSize:(NSNumber *)concertHallCurrentRoomSize {
+    [self setRequest:@"/api/audio/sound_effect/room_size/set" withArgs:[self.concertHallRoomSizesZik objectAtIndex:concertHallCurrentRoomSize.integerValue]];
+    _concertHallCurrentRoomSize = concertHallCurrentRoomSize;
 }
+
+- (void)setConcertHallCurrentAngle:(NSNumber *)concertHallCurrentAngle {
+    [self setRequest:@"/api/audio/sound_effect/room_size/set" withArgs:[self.concertHallAngles objectAtIndex:concertHallCurrentAngle.integerValue]];
+    _concertHallCurrentAngle = concertHallCurrentAngle;
+}
+
 - (void)setEqualizerEnabled:(NSNumber*)isEnabled {
-#warning TODO
+    [self setRequest:@"/api/audio/equalizer/enabled/set" withArgs:self.argsDictionary[isEnabled]];
+    _equalizerEnabled = isEnabled;
 }
 
-- (NSString*)getBatteryLevel {
-    
-    return _batteryLevel;
-}
-
-- (NSString*)getBatteryStatus {
-    
-    return _batteryStatus;
+- (void)setEqualizerCurrentPreset:(NSNumber *)equalizerCurrentPreset {
+    [self setRequest:@"/api/audio/equalizer/preset_id/set" withArgs:[NSString stringWithFormat:@"%@", equalizerCurrentPreset]];
+    _equalizerCurrentPreset = equalizerCurrentPreset;
 }
 
 
@@ -109,12 +98,25 @@
 
 - (void)refreshAllData {
     
-    // Send multiple requests for data
-    [self getRequest:@"/api/system/battery/get"];
+    // Get device type and software version
+    [self getRequest:@"/api/system/device_type/get"];
     [self getRequest:@"/api/software/version/get"];
-    [self getRequest:@"/api/bluetooth/friendlyname/get"];
     
+    // Get Lou Reed enabled
+    [self getRequest:@"/api/audio/specific_mode/enabled/get"];
+    
+    // Get Noise Cancelation enabled
     [self getRequest:@"/api/audio/noise_cancellation/enabled/get"];
+    
+    // Get Concert Hall enabled and settings
+    [self getRequest:@"/api/audio/sound_effect/get"];
+    
+    // Get Equalizer enabled and settings
+    [self getRequest:@"/api/audio/equalizer/get"];
+    
+    // Get name and battery level/status
+    [self getRequest:@"/api/bluetooth/friendlyname/get"];
+    [self getRequest:@"/api/system/battery/get"];
 }
 
 
@@ -195,7 +197,7 @@
             return;
         
         NSLog(@"Found rfcomm channel on device: %d",rfCommChan);
-        self.connectionOpened = [self openConnection:&rfCommChan];
+        self.connectionOpened = [NSNumber numberWithBool:[self openConnection:&rfCommChan]];
         
     } else {
         NSLog(@"Bluetooth device not Found!");
@@ -259,6 +261,7 @@
 
 - (void)rfcommChannelClosed:(IOBluetoothRFCOMMChannel*)rfcommChannel {
     NSLog(@"Channel closed!");
+    self.connectionOpened = @NO;
 }
 
 
@@ -292,46 +295,54 @@
 - (void)parser:(NSXMLParser *)parser didStartElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString *)qName attributes:(NSDictionary *)attributeDict {
     
     // This is the function where we grab the element and figure out what ivar to change
-    // TODO make this more structured perhaps?
+    // Access ivars directly, since we don't want to trigger setting these properties on the device
     
 #warning Some of these dictionaries may not contain all possible options! Error handling required probably...
     if ([elementName isEqualToString:@"battery"]) {
-        
-        self.batteryStatus = self.batteryStatusDictionary[attributeDict[@"state"]];
-        self.batteryLevel = attributeDict[@"level"];
-        
+        _batteryStatus = self.batteryStatusDictionary[attributeDict[@"state"]];
+        _batteryLevel = attributeDict[@"level"];
+    } else if ([elementName isEqualToString:@"specific_mode"]) {
+        _louReedEnabled = self.reverseArgsDictionary[attributeDict[@"enabled"]];
+    } else if ([elementName isEqualToString:@"device_type"]) {
+        _deviceType = attributeDict[@"value"];
     } else if ([elementName isEqualToString:@"software"]) {
-        
-        self.firmwareVersion = attributeDict[@"version"];
-        
+        _firmwareVersion = attributeDict[@"version"];
     } else if ([elementName isEqualToString:@"bluetooth"]) {
-        
-        self.friendlyName = attributeDict[@"friendlyname"];
-        
+        _friendlyName = attributeDict[@"friendlyname"];
     } else if ([elementName isEqualToString:@"noise_cancellation"]) {
-        
-        // Access ivar directly, since we don't want to trigger setting this property on the device
         _noiseCancelingEnabled = self.reverseArgsDictionary[attributeDict[@"enabled"]];
-       
+    } else if ([elementName isEqualToString:@"sound_effect"]) {
+        _concertHallEnabled = self.reverseArgsDictionary[attributeDict[@"enabled"]];
+        _concertHallCurrentRoomSize = @([self.concertHallRoomSizesZik indexOfObject:attributeDict[@"room_size"]]);
+        _concertHallCurrentAngle = attributeDict[@"angle"];
+    } else if ([elementName isEqualToString:@"equalizer"]) {
+        _equalizerEnabled = self.reverseArgsDictionary[attributeDict[@"enabled"]];
+        _equalizerCurrentPreset = attributeDict[@"preset_id"];
     } else if ([elementName isEqualToString:@"notify"]) {
-        
         // This is a period battery notification, in this case, update battery levels/status
         [self getRequest:@"/api/system/battery/get"];
     }
+    [self checkIfReady];
 }
 
--(void)parser:(NSXMLParser *)parser foundCharacters:(NSString *)string {
-    // Unused for now
+- (void)checkIfReady
+{
+    if (self.batteryStatus &&
+        self.batteryLevel &&
+        self.louReedEnabled &&
+        self.noiseCancelingEnabled &&
+        self.concertHallEnabled &&
+        self.equalizerEnabled &&
+        self.friendlyName &&
+        self.deviceType &&
+        self.firmwareVersion &&
+        self.concertHallCurrentRoomSize &&
+        self.concertHallCurrentAngle &&
+        self.equalizerCurrentPreset &&
+        !self.isReady.boolValue) {
+        self.isReady = @YES;
+        [[self delegate] zikReady];
+    }
 }
-
-- (void)parser:(NSXMLParser *)parser didEndElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString *)qName {
-    // Unused for now
-}
-
-- (void)parserDidEndDocument:(NSXMLParser *)parser {
-    // Unused for now
-}
-
-
 
 @end
