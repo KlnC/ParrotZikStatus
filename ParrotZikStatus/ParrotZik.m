@@ -49,7 +49,7 @@
     
     // List options presented externally
     self.concertHallRoomSizes = @[@"Silent Room", @"Living Room", @"Jazz Club", @"Concert Hall"];
-    self.concertHallAngles = @[@0, @30, @60, @90, @120, @150, @180];
+    self.concertHallAngles = @[@"30", @"60", @"90", @"120", @"150", @"180"];
     self.equalizerPresets = @[@"Vocal", @"Pop", @"Club", @"Punchy", @"Deep", @"Crystal", @"User"];
     
     // Zik formatted list options
@@ -79,7 +79,7 @@
 }
 
 - (void)setConcertHallCurrentAngle:(NSNumber *)concertHallCurrentAngle {
-    [self setRequest:@"/api/audio/sound_effect/room_size/set" withArgs:[self.concertHallAngles objectAtIndex:concertHallCurrentAngle.integerValue]];
+    [self setRequest:@"/api/audio/sound_effect/angle/set" withArgs:[self.concertHallAngles objectAtIndex:concertHallCurrentAngle.integerValue]];
     _concertHallCurrentAngle = concertHallCurrentAngle;
 }
 
@@ -177,6 +177,7 @@
         [self connectToDevice];
     } else {
         NSLog(@"Could not connect to device!");
+        [[self delegate] zikDisconnected];
     }
 }
 
@@ -187,6 +188,7 @@
         IOReturn ret = [_btDevice performSDPQuery:self];
         if (ret != kIOReturnSuccess) {
             NSLog(@"Something went wrong!");
+            [[self delegate] zikDisconnected];
             return;
         }
         
@@ -201,6 +203,7 @@
         
     } else {
         NSLog(@"Bluetooth device not Found!");
+        [[self delegate] zikDisconnected];
     }
 }
 
@@ -230,6 +233,7 @@
     IOBluetoothRFCOMMChannel *channel;
     if ([_btDevice openRFCOMMChannelAsync:&channel withChannelID:*chanId delegate:self] != kIOReturnSuccess) {
         NSLog(@"Couldn't open channel!");
+        [[self delegate] zikDisconnected];
         return NO;
     }
     [channel setSerialParameters: 9600 dataBits: 8 parity: kBluetoothRFCOMMParityTypeNoParity stopBits: 2];
@@ -242,7 +246,7 @@
                            status:(IOReturn)error {
     if (error != kIOReturnSuccess) {
         NSLog(@"Failed to open channel, error %d", error);
-        
+        [[self delegate] zikDisconnected];
         return;
     }
     
@@ -262,6 +266,7 @@
 - (void)rfcommChannelClosed:(IOBluetoothRFCOMMChannel*)rfcommChannel {
     NSLog(@"Channel closed!");
     self.connectionOpened = @NO;
+    [[self delegate] zikDisconnected];
 }
 
 
@@ -314,7 +319,7 @@
     } else if ([elementName isEqualToString:@"sound_effect"]) {
         _concertHallEnabled = self.reverseArgsDictionary[attributeDict[@"enabled"]];
         _concertHallCurrentRoomSize = @([self.concertHallRoomSizesZik indexOfObject:attributeDict[@"room_size"]]);
-        _concertHallCurrentAngle = attributeDict[@"angle"];
+        _concertHallCurrentAngle = @([self.concertHallAngles indexOfObject:attributeDict[@"angle"]]);
     } else if ([elementName isEqualToString:@"equalizer"]) {
         _equalizerEnabled = self.reverseArgsDictionary[attributeDict[@"enabled"]];
         _equalizerCurrentPreset = attributeDict[@"preset_id"];
@@ -340,8 +345,13 @@
         self.concertHallCurrentAngle &&
         self.equalizerCurrentPreset &&
         !self.isReady.boolValue) {
-        self.isReady = @YES;
-        [[self delegate] zikReady];
+        
+        if (!self.isReady.boolValue) {
+            self.isReady = @YES;
+            [[self delegate] zikReady];
+        }
+        
+        [[self delegate] zikDataChanged];
     }
 }
 

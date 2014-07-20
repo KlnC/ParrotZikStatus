@@ -13,7 +13,7 @@
 
 - (void)zikReady;
 - (void)zikDisconnected;
-- (void)dataChanged;
+- (void)zikDataChanged;
 
 @end
 
