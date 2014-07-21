@@ -52,6 +52,8 @@
 
 -(void)toggleLaunchAtLogin
 {
+    self.launchAtLogin = self.launchAtLogin ? NO : YES;
+    
     if (self.launchAtLogin) { // ON
         // Turn on launch at login
         if (!SMLoginItemSetEnabled ((__bridge CFStringRef)@"KeelanCumming.ParrotZikStatusHelper", YES)) {
@@ -61,6 +63,7 @@
                                                otherButton:nil
                                  informativeTextWithFormat:@"Couldn't add Helper App to launch at login item list."];
             [alert runModal];
+            NSLog(@"Failed");
         }
     }
     else { // OFF
@@ -74,7 +77,7 @@
             [alert runModal];
         }
     }
-    self.launchAtLogin = self.launchAtLogin ? NO : YES;
+    
     [self refreshMenuData];
 }
 

@@ -18,7 +18,7 @@
     NSArray *running = [[NSWorkspace sharedWorkspace] runningApplications];
     for (NSRunningApplication *app in running) {
         
-        if ([[app bundleIdentifier] isEqualToString:@"com.mybundleidentifier"]) {
+        if ([[app bundleIdentifier] isEqualToString:@"KeelanCumming.ParrotZikStatus"]) {
             alreadyRunning = YES;
             isActive = [app isActive];
         }

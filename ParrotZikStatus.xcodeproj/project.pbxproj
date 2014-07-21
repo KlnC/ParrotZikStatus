@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0594CEE3197CA165002CF6FA /* ParrotZikStatusHelper.app in Copy Helper App */ = {isa = PBXBuildFile; fileRef = 0594CEDB197C9F9B002CF6FA /* ParrotZikStatusHelper.app */; };
+		055FAC29197DDB9E005686FA /* ParrotZikStatusHelper.app in Copy Helper App */ = {isa = PBXBuildFile; fileRef = 0594CEDB197C9F9B002CF6FA /* ParrotZikStatusHelper.app */; };
 		0594CEE6197CA500002CF6FA /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0594CEE5197CA500002CF6FA /* ServiceManagement.framework */; };
 		05A94D4C19737F65000FD8E9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05A94D4B19737F65000FD8E9 /* Cocoa.framework */; };
 		05A94D5619737F65000FD8E9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 05A94D5419737F65000FD8E9 /* InfoPlist.strings */; };
@@ -55,7 +55,7 @@
 			dstPath = Contents/Library/LoginItems;
 			dstSubfolderSpec = 1;
 			files = (
-				0594CEE3197CA165002CF6FA /* ParrotZikStatusHelper.app in Copy Helper App */,
+				055FAC29197DDB9E005686FA /* ParrotZikStatusHelper.app in Copy Helper App */,
 			);
 			name = "Copy Helper App";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -258,6 +258,7 @@
 				ORGANIZATIONNAME = KeelanCumming;
 				TargetAttributes = {
 					05A94D4719737F65000FD8E9 = {
+						DevelopmentTeam = 836SS9LUJ4;
 						SystemCapabilities = {
 							com.apple.Sandbox = {
 								enabled = 1;
@@ -473,11 +474,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ParrotZikStatus/ParrotZikStatus.entitlements;
+				CODE_SIGN_IDENTITY = "Mac Developer: Keelan Cumming (UZQ446H9EL)";
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ParrotZikStatus/ParrotZikStatus-Prefix.pch";
 				INFOPLIST_FILE = "ParrotZikStatus/ParrotZikStatus-Info.plist";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "5D88470B-3981-4346-9B09-D7756817E487";
+				STRIP_INSTALLED_PRODUCT = NO;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;
@@ -487,12 +491,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = ParrotZikStatus/ParrotZikStatus.entitlements;
+				CODE_SIGN_IDENTITY = "Mac Developer: Keelan Cumming (UZQ446H9EL)";
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "ParrotZikStatus/ParrotZikStatus-Prefix.pch";
 				INFOPLIST_FILE = "ParrotZikStatus/ParrotZikStatus-Info.plist";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "5D88470B-3981-4346-9B09-D7756817E487";
+				STRIP_INSTALLED_PRODUCT = NO;
 				WRAPPER_EXTENSION = app;
 			};
 			name = Release;
