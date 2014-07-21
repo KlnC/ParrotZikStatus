@@ -51,6 +51,7 @@
 @property (nonatomic, retain) NSArray *concertHallAngles;
 
 // Custom initialization
-- (id)initWithMacAddress:(NSString*)macAddress;
+- (id)initWithBluetoothDevice:(IOBluetoothDevice*)device;
++ (void)findRfCommChannelOnDevice:(IOBluetoothDevice*)device withChannel:(BluetoothRFCOMMChannelID*)newChan;
 
 @end

@@ -13,7 +13,6 @@
 // Bluetooth connection properties
 @property (nonatomic, retain) IOBluetoothDevice *btDevice;
 @property (nonatomic, retain) IOBluetoothRFCOMMChannel *rfcommChannel;
-@property (nonatomic, retain) NSNumber *connectionOpened; // Boolean
 
 @property (nonatomic, retain) NSDictionary *argsDictionary;
 @property (nonatomic, retain) NSDictionary *reverseArgsDictionary;
@@ -26,15 +25,15 @@
 
 #pragma Initialization of Zik device
 
-- (id)initWithMacAddress:(NSString*)macAddress {
+- (id)initWithBluetoothDevice:(IOBluetoothDevice*)device {
     
     self = [super init];
     if (self) {
         
-        _macAddress = macAddress;
+        _btDevice = device;
         
         [self initializeDefaultProperties];
-        [self setUpBluetoothConnection];
+        [self connectToDevice];
     }
     
     return self;
@@ -45,7 +44,7 @@
     // For translating between Zik strings and internal data
     self.argsDictionary = @{@YES: @"true", @NO: @"false"};
     self.reverseArgsDictionary = @{@"true": @YES, @"invalid_on": @YES, @"false": @NO, @"invalid_off": @NO};
-    self.batteryStatusDictionary = @{@"in_use": @"In Use", @"charging": @"Charging"};
+    self.batteryStatusDictionary = @{@"in_use": @"In Use", @"charging": @"Charging", @"charged": @"Charged"};
     
     // List options presented externally
     self.concertHallRoomSizes = @[@"Silent Room", @"Living Room", @"Jazz Club", @"Concert Hall"];
@@ -169,64 +168,22 @@
 
 #pragma Bluetooth connection stuff
 
-- (void)setUpBluetoothConnection {
-    _btDevice = nil;
-    self.connectionOpened = false;
-    _btDevice = [IOBluetoothDevice deviceWithAddressString:self.macAddress];
-    if(_btDevice != nil) {
-        [self connectToDevice];
-    } else {
-        NSLog(@"Could not connect to device!");
-        [[self delegate] zikDisconnected];
-    }
-}
-
 - (void)connectToDevice {
-    if(_btDevice != nil) {
-        
-        // Perform query on device
-        IOReturn ret = [_btDevice performSDPQuery:self];
-        if (ret != kIOReturnSuccess) {
-            NSLog(@"Something went wrong!");
-            [[self delegate] zikDisconnected];
-            return;
-        }
-        
-        BluetoothRFCOMMChannelID rfCommChan;
-        
-        // Check if device has rfcomm channel
-        if([self findRfCommChannel:&rfCommChan] != kIOReturnSuccess)
-            return;
-        
-        NSLog(@"Found rfcomm channel on device: %d",rfCommChan);
-        self.connectionOpened = [NSNumber numberWithBool:[self openConnection:&rfCommChan]];
-        
-    } else {
-        NSLog(@"Bluetooth device not Found!");
-        [[self delegate] zikDisconnected];
-    }
+    BluetoothRFCOMMChannelID rfCommChan;
+    [ParrotZik findRfCommChannelOnDevice:self.btDevice withChannel:&rfCommChan];
+    
+    if (rfCommChan)
+        [self openConnection:&rfCommChan];
 }
 
--(IOReturn) findRfCommChannel:(BluetoothRFCOMMChannelID *) rfChan{
-    
-    if(self.btDevice == nil)
-        return kIOReturnNotFound;
-    
-    IOReturn ret;
-    
-    NSArray* services = [_btDevice services];
-    BluetoothRFCOMMChannelID newChan;
++ (void)findRfCommChannelOnDevice:(IOBluetoothDevice*)device withChannel:(BluetoothRFCOMMChannelID*)newChan {
+
+    NSArray* services = [device services];
     for (IOBluetoothSDPServiceRecord* service in services) {
-        NSLog(@"Service: %@", [service getServiceName]);
-        ret = [service getRFCOMMChannelID:&newChan];
-        if (ret == kIOReturnSuccess) {
-            *rfChan = newChan;
-            NSLog(@"ChannelID FOUND %d %d", newChan, *rfChan);
-            return kIOReturnSuccess;
+        if ([[service getServiceName] isEqualToString:@"Parrot RFcomm service"]) {
+            [service getRFCOMMChannelID:newChan];
         }
     }
-    
-    return kIOReturnNotFound;
 }
 
 -(BOOL) openConnection:(BluetoothRFCOMMChannelID *) chanId{
@@ -265,7 +222,6 @@
 
 - (void)rfcommChannelClosed:(IOBluetoothRFCOMMChannel*)rfcommChannel {
     NSLog(@"Channel closed!");
-    self.connectionOpened = @NO;
     [[self delegate] zikDisconnected];
 }
 
@@ -343,8 +299,7 @@
         self.firmwareVersion &&
         self.concertHallCurrentRoomSize &&
         self.concertHallCurrentAngle &&
-        self.equalizerCurrentPreset &&
-        !self.isReady.boolValue) {
+        self.equalizerCurrentPreset) {
         
         if (!self.isReady.boolValue) {
             self.isReady = @YES;

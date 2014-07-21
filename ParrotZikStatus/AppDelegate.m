@@ -8,10 +8,9 @@
 
 #import "AppDelegate.h"
 #import "ParrotZik.h"
+#import <ServiceManagement/ServiceManagement.h>
 
 @interface AppDelegate () <ParrotZikDelegate>
-
-@property (nonatomic, retain) NSString *macAddress;
 
 @property (nonatomic, retain) NSStatusItem *statusItem;
 @property (nonatomic, retain) NSMenu *menu;
@@ -21,6 +20,7 @@
 
 @property (nonatomic, retain) NSMenuItem *firstSeparatorMenuItem;
 @property (nonatomic, retain) NSMenuItem *secondSeparatorMenuItem;
+@property (nonatomic, retain) NSMenuItem *launchAtStartupMenuItem;
 
 // Status menu items
 @property (nonatomic, retain) NSMenuItem *friendlyNameMenuItem;
@@ -41,14 +41,58 @@
 // Zik object reference
 @property (nonatomic, retain) ParrotZik *zik;
 
+// Central manager
+@property (nonatomic, retain) CBCentralManager *central;
+
+@property (nonatomic) BOOL launchAtLogin;
+
 @end
 
 @implementation AppDelegate
 
+-(void)toggleLaunchAtLogin
+{
+    if (self.launchAtLogin) { // ON
+        // Turn on launch at login
+        if (!SMLoginItemSetEnabled ((__bridge CFStringRef)@"KeelanCumming.ParrotZikStatusHelper", YES)) {
+            NSAlert *alert = [NSAlert alertWithMessageText:@"An error ocurred"
+                                             defaultButton:@"OK"
+                                           alternateButton:nil
+                                               otherButton:nil
+                                 informativeTextWithFormat:@"Couldn't add Helper App to launch at login item list."];
+            [alert runModal];
+        }
+    }
+    else { // OFF
+        // Turn off launch at login
+        if (!SMLoginItemSetEnabled ((__bridge CFStringRef)@"KeelanCumming.ParrotZikStatusHelper", NO)) {
+            NSAlert *alert = [NSAlert alertWithMessageText:@"An error ocurred"
+                                             defaultButton:@"OK"
+                                           alternateButton:nil
+                                               otherButton:nil
+                                 informativeTextWithFormat:@"Couldn't remove Helper App from launch at login item list."];
+            [alert runModal];
+        }
+    }
+    self.launchAtLogin = self.launchAtLogin ? NO : YES;
+    [self refreshMenuData];
+}
+
+- (void)initializeLaunchAtLogin {
+    NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+    self.launchAtLogin = [defaults boolForKey:@"launchAtLogin"];
+}
+
+- (void)setLaunchAtLogin:(BOOL)launchAtLogin {
+    NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setBool:launchAtLogin forKey:@"launchAtLogin"];
+    _launchAtLogin = launchAtLogin;
+}
+
 - (void)setDefaultProperties
 {
-    // TODO get this from somewhere!
-    self.macAddress = @"90:03:B7:AE:7A:4C";
+    [IOBluetoothDevice registerForConnectNotifications:self selector:@selector(deviceConnected::)];
+    [self initializeLaunchAtLogin];
 }
 
 - (void)zikReady {
@@ -60,13 +104,9 @@
 }
 
 - (void)zikDisconnected {
+    self.zik = nil;
     [self hideUnhideMenuItems:YES];
-    [self.friendlyNameMenuItem setTitle:@"Connecting..."];
-    
-    // New Parrot Zik object
-    ParrotZik *newZik = [[ParrotZik alloc] initWithMacAddress:self.macAddress];
-    self.zik = newZik;
-    self.zik.delegate = self;
+    [self.friendlyNameMenuItem setTitle:@"Searching for Zik..."];
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification
@@ -76,10 +116,31 @@
     // Set up status bar
     [self initializeStatusBar];
     
-    // New Parrot Zik object
-    ParrotZik *newZik = [[ParrotZik alloc] initWithMacAddress:self.macAddress];
-    self.zik = newZik;
-    self.zik.delegate = self;
+    if (nil == self.zik) {
+        // Look for BT devices
+        NSArray *devices = [IOBluetoothDevice pairedDevices];
+        for (IOBluetoothDevice *device in devices) {
+            if ([self initializeZikWithDevice:device]) break;
+        }
+    }
+}
+
+- (void)deviceConnected:(IOBluetoothUserNotification*)notification :(IOBluetoothDevice*)device {
+    [self initializeZikWithDevice:device];
+}
+
+- (BOOL)initializeZikWithDevice:(IOBluetoothDevice*)device {
+    // Check to see if this is a Zik
+    BluetoothRFCOMMChannelID newChan;
+    [ParrotZik findRfCommChannelOnDevice:device withChannel:&newChan];
+    if (newChan) {
+        // New Parrot Zik object
+        ParrotZik *newZik = [[ParrotZik alloc] initWithBluetoothDevice:device];
+        self.zik = newZik;
+        self.zik.delegate = self;
+        return YES;
+    }
+    return NO;
 }
 
 - (void)initializeStatusBar {
@@ -89,14 +150,14 @@
     [self.statusItem setHighlightMode:YES];
     [self.statusItem setTitle:@"Zik"];
     [self.statusItem setEnabled:YES];
-    [self.statusItem setToolTip:@"WTLP Parrot Zik Status App"];
+    [self.statusItem setToolTip:@"Zik Control Panel"];
     
     self.menu = [[NSMenu alloc] init];
     
     [self.statusItem setMenu:self.menu];
     
     // Initialize a connecting item
-    self.friendlyNameMenuItem = [[NSMenuItem alloc] initWithTitle:@"Connecting..." action:nil keyEquivalent:@""];
+    self.friendlyNameMenuItem = [[NSMenuItem alloc] initWithTitle:@"Searching for Zik..." action:nil keyEquivalent:@""];
     [self.friendlyNameMenuItem setTarget:self];
     [self.menu insertItem:self.friendlyNameMenuItem atIndex:0];
     
@@ -138,6 +199,7 @@
         self.equalizerMenuItem.state = self.zik.equalizerEnabled.boolValue ? NSOnState : NSOffState;
         self.concertHallMenuItem.state = self.zik.concertHallEnabled.boolValue ? NSOnState : NSOffState;
         self.louReedMenuItem.state = self.zik.louReedEnabled.boolValue ? NSOnState : NSOffState;
+        self.launchAtStartupMenuItem.state = self.launchAtLogin ? NSOnState : NSOffState;
         
         [self initializePresetsMenus];
         
@@ -269,7 +331,21 @@
     [self.concertHallAngleMenuItem setTarget:self];
     [self.menu insertItem:self.concertHallAngleMenuItem atIndex:11];
     
+    [self.menu insertItem:[NSMenuItem separatorItem] atIndex:12];
+    
+    self.launchAtStartupMenuItem = [[NSMenuItem alloc] initWithTitle:@"Launch at Startup" action:@selector(toggleLaunchAtLogin) keyEquivalent:@""];
+    [self.launchAtStartupMenuItem setTarget:self];
+    [self.menu insertItem:self.launchAtStartupMenuItem atIndex:13];
+    
+    NSMenuItem *exitItem = [[NSMenuItem alloc] initWithTitle:@"Exit" action:@selector(exitApplication) keyEquivalent:@""];
+    [exitItem setTarget:self];
+    [self.menu insertItem:exitItem atIndex:14];
+    
     [self refreshMenuData];
+}
+
+- (void)exitApplication {
+    [NSApp terminate:self];
 }
 
 - (void)selectEqualizerPreset:(id)menuItem {
